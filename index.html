@@ -236,6 +236,8 @@ body.rail-open #railClose{display:grid}
   .two{grid-template-columns:1fr}
 }
 @media (max-width:560px){ .kpis{grid-template-columns:1fr 1fr} .top-in .crumb{display:none} }
+.alerts .more{display:none;align-self:flex-start}
+@media (max-width:900px){ .alerts:not(.all) .alert:nth-child(n+3){display:none} .alerts .more{display:inline-block} }
 @media print{ .sb,.top,.tabs,.alerts,.kpis,.foot,.rail,.sb-scrim{display:none!important} .app{display:block} .wrap{display:block;padding:0} .panel{border:0;padding:0} body{background:#fff;color:#000} }
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
@@ -866,6 +868,7 @@ function renderScenTabs(){
   $('#scenTabs').querySelector('button[data-newlean]').onclick=()=>{ state.scenarios.push(newSiteLean('Zen Bottling')); state.active=state.scenarios.length-1; state.compare=false; state.module='econ'; save(); rerender(true); toast('Zen Bottling created'); };
   $('#btnCompare').textContent=state.compare?'Exit compare':'Compare locations';
 }
+function setAlerts(al){ const el=$('#alerts'); el.classList.remove('all'); el.innerHTML=al.map(a=>`<div class="alert ${a[0]}"><span class="tag">${a[1]}</span><span>${a[2]}</span></div>`).join('')+(al.length>2?`<button class="btn small more" data-more="1">Show ${al.length-2} more alerts</button>`:''); const mb=el.querySelector('[data-more]'); if(mb) mb.onclick=()=>{ el.classList.toggle('all'); mb.textContent=el.classList.contains('all')?'Show fewer':`Show ${al.length-2} more alerts`; }; }
 function renderMain(){
   const s=S(); const r=calc(s);
   const k=[
@@ -891,7 +894,7 @@ function renderMain(){
   r.lines.filter(L=>L.active&&L.linePL<0&&!L.overbooked&&L.idleMin/L.plannedMin<=0.3).forEach(L=>al.push(['warn','Line',`${L.name}: fully loaded cost ${cents(L.fullCost)}/unit vs blended fee ${cents(L.units?L.revenue/L.units:0)}. Lever: OEE ${L.oee}% → speed before price.`]));
   if(r.ot>0.08*r.directLabor) al.push(['warn','Overtime',`OT is ${fmtK(r.ot)}/mo (${pct(r.ot/r.directLabor)} of direct labor). OT only disappears if out-the-door speed goes up — never model the saving without the speed gain.`]);
   const estCount=Object.keys(s.est||{}).length + s.services.filter(x=>x.est).length; if(estCount) al.push(['warn','Verify',`${estCount} values are estimates (marked EST). Replace them with invoices / GL actuals before using this for a lender or investor.`]);
-  $('#alerts').innerHTML=al.map(a=>`<div class="alert ${a[0]}"><span class="tag">${a[1]}</span><span>${a[2]}</span></div>`).join('');
+  setAlerts(al);
   $('#mods').querySelectorAll('button').forEach(b=>{ b.classList.toggle('on',b.dataset.m===state.module); b.onclick=()=>{ state.module=b.dataset.m; state.compare=false; save(); rerender(true); }; });
   killCharts(); const v=$('#view');
   if(state.compare){ $('#tabs').innerHTML=''; v.innerHTML=viewCompare(); wireCompare(); return; }
@@ -1667,7 +1670,7 @@ function renderValKpis(s,r,vr){
   if(vr.top.share>0.3) al.push(['warn','Concentration',`${esc(vr.top.customer)} at ${pct(vr.top.share)} of revenue compresses the multiple to ~${vr.implied.toFixed(1)}×. Diversification to <20% is worth roughly ${fmtK((s.val.multStrategic-0.5-vr.implied)*vr.norm)} of enterprise value.`]);
   const estAdd=s.val.addbacks.filter(a=>a.est).length; if(estAdd) al.push(['warn','Add-backs',`${estAdd} add-backs are placeholders at $0 until confirmed from the GL. A buyer's QoE will only credit documented add-backs.`]);
   al.push(['good','Basis','Management-prepared, unaudited. EBITDA = plant model EBITDA × 12 + storage income + add-backs. Every figure traces to the Plant Economics inputs of this location.']);
-  $('#alerts').innerHTML=al.map(a=>`<div class="alert ${a[0]}"><span class="tag">${a[1]}</span><span>${a[2]}</span></div>`).join('');
+  setAlerts(al);
 }
 function vEbitda(v,s,r,vr){
   v.innerHTML=`<div class="panel"><h2>Normalized EBITDA bridge — annual</h2>
@@ -2211,7 +2214,7 @@ function renderActuals(v,s,r){
   $('#kpis').innerHTML=k.map(x=>`<div class="kpi ${x[3]}"><div class="l">${x[0]}</div><div class="v ${/^-/.test(x[1])?'neg':''}" style="font-size:19px">${x[1]}</div><div class="s">${x[2]}</div></div>`).join('');
   const al=[['warn','Scope',`This is the <b>Tradition Beverages LLC</b> operating account only, cash basis Jan 1 – Oct 22 2026. Rent is not in it (the ~$130K monthly transfers to another BofA account are likely the rent/Well Above funding), Novamex/Jarritos revenue sits in the other entity, and payroll moved into this account only from June (paper checks) and August (Gusto). Treat per-customer <i>net</i> as directional until both entities are combined.`]];
   if(A.unmappedCount) al.push(['warn','Mapping',`${A.unmappedCount} vendors are unassigned. Open the rail and assign each vendor to a customer and material type — that is what makes the per-customer profitability true.`]);
-  $('#alerts').innerHTML=al.map(a=>`<div class="alert ${a[0]}"><span class="tag">${a[1]}</span><span>${a[2]}</span></div>`).join('');
+  setAlerts(al);
   ({cashpl:aCashPL,rev:aRev,mat:aMat,cprof:aProf,flags:aFlags})[state.atab||'cashpl'](v,s,A);
 }
 const mrow=(label,arr,bold=false,neg=false)=>`<tr class="${bold?'tot':''}"><td>${bold?'<b>'+label+'</b>':label}</td>${arr.map(x=>`<td class="n ${x<0?'neg':''}">${x?fmtK(x):'—'}</td>`).join('')}<td class="n ${bold?'':''}">${fmtK(arr.reduce((a,b)=>a+b,0))}</td></tr>`;
